@@ -51,6 +51,9 @@ type (
 		QueryField *FieldConfig `json:"QueryField,omitempty"`
 		// MutationInputs defines the input types for the mutation.
 		MutationInputs []MutationConfig `json:"MutationInputs,omitempty"`
+		// CustomCollectedField adds a custom graphql field that will use field collection.
+		// You must implement query.WithNamedXXX
+		CustomCollectedFields []CustomCollectedField `json:"CustomCollectedFields,omitempty"`
 	}
 
 	// Directive to apply on the field/type.
@@ -77,6 +80,10 @@ type (
 	MutationConfig struct {
 		IsCreate    bool   `json:"IsCreate,omitempty"`
 		Description string `json:"Description,omitempty"`
+	}
+
+	CustomCollectedField struct {
+		Name string `json:"Name,omitempty"`
 	}
 )
 
@@ -109,6 +116,24 @@ const (
 // Name implements ent.Annotation interface.
 func (Annotation) Name() string {
 	return "EntGQL"
+}
+
+// CustomCollectedFields enables additional graphql fields to be added
+// for a given edge and still utilized field collections for avoiding
+// the n + 1 problem.
+// func (Todo) Edges() []ent.Edge {
+// 	 return []ent.Edge{
+// 		 edge.To("tasks", Task.Type).
+// 			 Annotations(
+// 				 entgql.CustomCollectedFields(entgql.CustomCollectedField{Name: "todaysTasks"}),
+// 			 ),
+// 	 }
+// }
+//
+// You must then add the WithNamed<Edge> function
+
+func CustomCollectedFields(fields ...CustomCollectedField) Annotation {
+	return Annotation{CustomCollectedFields: fields}
 }
 
 // OrderField enables ordering in GraphQL for the annotated Ent field
@@ -475,6 +500,9 @@ func (a Annotation) Merge(other schema.Annotation) schema.Annotation {
 	}
 	if len(ant.Directives) > 0 {
 		a.Directives = append(a.Directives, ant.Directives...)
+	}
+	if len(ant.CustomCollectedFields) > 0 {
+		a.CustomCollectedFields = append(a.CustomCollectedFields, ant.CustomCollectedFields...)
 	}
 	if ant.QueryField != nil {
 		if a.QueryField == nil {
