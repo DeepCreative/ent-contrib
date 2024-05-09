@@ -262,6 +262,12 @@ func ({{ $receiver }} *{{ $query }}) collectField(ctx context.Context, oneNode b
 						case {{ range $i, $m := . }}{{ if $i }}, {{ end }}"{{ $m }}"{{ end }}:
 						{{- end }}
 					{{- end -}}
+				{{ range $a := $node.Annotations.EntGQL.CustomManualCollectedFields }}
+					case "{{ $a.Name }}":
+						if err := {{ $node.Name }}{{ pascal $a.Name }}CollectFields(ctx, si, field, &path, fieldSeen, &selectedFields, oneNode, opCtx, satisfies...); err != nil {
+							return err
+						}
+				{{- end }}
 				case "__typename":
 				default:
 					unknownSeen = true

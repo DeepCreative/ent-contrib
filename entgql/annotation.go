@@ -54,6 +54,9 @@ type (
 		// CustomCollectedField adds a custom graphql field that will use field collection.
 		// You must implement query.WithNamedXXX
 		CustomCollectedFields []CustomCollectedField `json:"CustomCollectedFields,omitempty"`
+		// CustomCollectedField adds a custom graphql field that will use field collection.
+		// You must implement query.WithNamedXXX
+		CustomManualCollectedFields []CustomCollectedField `json:"CustomManualCollectedFields,omitempty"`
 	}
 
 	// Directive to apply on the field/type.
@@ -121,19 +124,58 @@ func (Annotation) Name() string {
 // CustomCollectedFields enables additional graphql fields to be added
 // for a given edge and still utilized field collections for avoiding
 // the n + 1 problem.
-// func (Todo) Edges() []ent.Edge {
-// 	 return []ent.Edge{
-// 		 edge.To("tasks", Task.Type).
-// 			 Annotations(
-// 				 entgql.CustomCollectedFields(entgql.CustomCollectedField{Name: "todaysTasks"}),
-// 			 ),
-// 	 }
-// }
 //
-// You must then add the WithNamed<Edge> function
-
+//	func (Todo) Edges() []ent.Edge {
+//		 return []ent.Edge{
+//			 edge.To("tasks", Task.Type).
+//				 Annotations(
+//					 entgql.CustomCollectedFields(entgql.CustomCollectedField{Name: "todaysTasks"}),
+//				 ),
+//		 }
+//	}
+//
+// You must then add the With<Edge> function on the receiver query
+//
+//	func (pq *TodoQuery) WithTodaysTasks(opts ...func(*TasksQuery)) *TodoQuery {
+//		fn := func(tq *TasksQuery) {
+//			tq = tq.DueToday()
+//		}
+//
+//		newOpts := append(opts, fn)
+//		return pq.WithNamedTasks("todaysTasks", newOpts...)
+//	}
 func CustomCollectedFields(fields ...CustomCollectedField) Annotation {
 	return Annotation{CustomCollectedFields: fields}
+}
+
+// CustomManualCollectedFields enables additional graphql fields to be added
+// for a given schema to avoid the n + 1 problem.
+//
+//	func (Todo) Annotations() []schema.Annotation {
+//		return []schema.Annotation{
+//			entgql.CustomManualCollectedFields(entgql.CustomCollectedField{Name: "item"}),
+//		}
+//	}
+//
+// Unlike CustomCollectedFields, where you only specify the query function,
+// you must fully specify the logic that happens when accessing this field.
+//
+//	func TodoTodaysTasksCollectFields(
+//		ctx context.Context,
+//		ti *TodoQuery,
+//		field graphql.CollectedField,
+//		path *[]string,
+//		fieldSeen map[string]struct{},
+//		selectedFields *[]string,
+//		oneNode bool,
+//		opCtx *graphql.OperationContext,
+//		satisfies ...string,
+//	) error {
+//		DoSomething()
+//		return nil
+//	}
+func CustomManualCollectedFields(fields ...CustomCollectedField) Annotation {
+	return Annotation{CustomManualCollectedFields: fields}
 }
 
 // OrderField enables ordering in GraphQL for the annotated Ent field
@@ -503,6 +545,9 @@ func (a Annotation) Merge(other schema.Annotation) schema.Annotation {
 	}
 	if len(ant.CustomCollectedFields) > 0 {
 		a.CustomCollectedFields = append(a.CustomCollectedFields, ant.CustomCollectedFields...)
+	}
+	if len(ant.CustomManualCollectedFields) > 0 {
+		a.CustomManualCollectedFields = append(a.CustomManualCollectedFields, ant.CustomManualCollectedFields...)
 	}
 	if ant.QueryField != nil {
 		if a.QueryField == nil {
