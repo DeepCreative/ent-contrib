@@ -22,6 +22,15 @@ import (
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
+type CustomCollectedFieldType string
+
+const (
+	List       CustomCollectedFieldType = "List"
+	Singular   CustomCollectedFieldType = "Singular"
+	Connection CustomCollectedFieldType = "Connection"
+	Existence  CustomCollectedFieldType = "Existence"
+)
+
 type (
 	// Annotation annotates fields and edges with metadata for templates.
 	Annotation struct {
@@ -86,8 +95,17 @@ type (
 	}
 
 	CustomCollectedField struct {
-		Name string `json:"Name,omitempty"`
+		Name                string                   `json:"Name,omitempty"`
+		FieldType           CustomCollectedFieldType `json:"FieldType,omitempty"`
+		IncludeWhere        bool                     `json:"IncludeWhere,omitempty"`
+		WhereName           string                   `json:"WhereName,omitempty"`
+		OrderFieldName      string                   `json:"OrderFieldName,omitempty"`
+		OrderFieldDirection OrderDirection           `json:"OrderFieldDirection,omitempty"`
+		SkipEdge            bool                     `json:"SkipEdge,omitempty"`
+		SkipThroughEdge     bool                     `json:"SkipThroughEdge,omitempty"`
 	}
+
+	CustomCollectedFieldOption func(*CustomCollectedField)
 )
 
 const (
@@ -122,28 +140,69 @@ func (Annotation) Name() string {
 }
 
 // CustomCollectedFields enables additional graphql fields to be added
-// for a given edge and still utilized field collections for avoiding
+// for a given edge and still utilize field collections for avoiding
 // the n + 1 problem.
 //
 //	func (Todo) Edges() []ent.Edge {
-//		 return []ent.Edge{
-//			 edge.To("tasks", Task.Type).
-//				 Annotations(
-//					 entgql.CustomCollectedFields(entgql.CustomCollectedField{Name: "todaysTasks"}),
-//				 ),
+//		return []ent.Edge{
+//			edge.To("tasks", Task.Type).
+//				Annotations(
+//					entgql.CustomCollectedFields(entgql.NewCustomCollectedField(
+//						"completed",
+//					)),
+//				),
 //		 }
 //	}
 //
-// You must then add the With<Edge> function on the receiver query
+// This will create a graphql field like "completedTasks".
+// You then must implement a function WhereIsCompleted:
 //
-//	func (pq *TodoQuery) WithTodaysTasks(opts ...func(*TasksQuery)) *TodoQuery {
-//		fn := func(tq *TasksQuery) {
-//			tq = tq.DueToday()
-//		}
+//	func (t *TaskQuery) WhereIsCompleted() *TaskQuery {}
 //
-//		newOpts := append(opts, fn)
-//		return pq.WithNamedTasks("todaysTasks", newOpts...)
+// The annotation will autogenerate the following functions:
+//
+//	func (b *TodoQuery) WithCompletedTasks(
+//		opts ...func(*TaskQuery),
+//	) *TaskQuery {}
+//
+//	func (b *Todo) CompletedTasks(ctx context.Context) (*Task, error) {}
+//
+// There are additional modifiers for more complex behavior:
+//
+//	func (Todo) Edges() []ent.Edge {
+//		return []ent.Edge{
+//			edge.To("tasks", Task.Type).
+//				Annotations(
+//					entgql.CustomCollectedFields(entgql.NewCustomCollectedField(
+//						"latestCompleted",
+//						entgql.Singular,
+//						entgql.IncludeOrder(true),
+//						entgql.WhereName("WhereIsReleased"),
+//						entgql.OrderName("OrderByLatest"),
+//					)),
+//				),
+//		 }
 //	}
+//
+// This will create a graphql field like "latestCompletedTask".
+// You then must implement 2 functions WhereIsReleased and OrderByLatest:
+//
+// The annotation will autogenerate the following functions:
+//
+//	func (b *TodoQuery) WithLatestCompletedTask(
+//		opts ...func(*TaskQuery),
+//	) *TaskQuery {}
+//
+//	func (b *Todo) LatestCompletedTask(ctx context.Context) (*Task, error) {}
+//
+// There are 4 types; List, Singular, Existence, and Connection.
+//
+// The FieldTypes result in different naming like this:
+//
+//	List: latestCompletedTasks
+//	Singular: latestCompletedTask
+//	Connection: latestCompletedTasks
+//	Existence: hasLatestCompletedTask
 func CustomCollectedFields(fields ...CustomCollectedField) Annotation {
 	return Annotation{CustomCollectedFields: fields}
 }
@@ -619,6 +678,73 @@ func NewDirective(name string, args ...*ast.Argument) Directive {
 	return Directive{
 		Name:      name,
 		Arguments: args,
+	}
+}
+
+// NewCustomCollectedField returns a CustomCollectedField
+// to use with the entgql.CustomCollectedFields annotation.
+func NewCustomCollectedField(name string, fieldType CustomCollectedFieldType, setters ...CustomCollectedFieldOption) CustomCollectedField {
+	ccf := &CustomCollectedField{
+		Name:                name,
+		FieldType:           fieldType,
+		IncludeWhere:        true,
+		OrderFieldDirection: OrderDirectionAsc,
+	}
+
+	for _, setter := range setters {
+		setter(ccf)
+	}
+
+	return *ccf
+}
+
+// Specifies whether a where clause function will be generated, defaults to true
+func IncludeWhere(include bool) CustomCollectedFieldOption {
+	return func(ccf *CustomCollectedField) {
+		ccf.IncludeWhere = include
+	}
+}
+
+// Specifies and override for the where clause function name
+func WhereName(name string) CustomCollectedFieldOption {
+	return func(ccf *CustomCollectedField) {
+		ccf.WhereName = name
+	}
+}
+
+// Specifies the field to order by
+func OrderFieldName(name string) CustomCollectedFieldOption {
+	return func(ccf *CustomCollectedField) {
+		ccf.OrderFieldName = name
+	}
+}
+
+// Specifies the order direction
+func OrderFieldDirection(dir OrderDirection) CustomCollectedFieldOption {
+	return func(ccf *CustomCollectedField) {
+		ccf.OrderFieldDirection = dir
+	}
+}
+
+// Skips the destination edge when used on an edge that goes through an edge schema
+func SkipEdge(skip bool) CustomCollectedFieldOption {
+	return func(ccf *CustomCollectedField) {
+		ccf.SkipEdge = skip
+	}
+}
+
+// Skips the through edge when used on an edge that goes through an edge schema
+func SkipThroughEdge(skip bool) CustomCollectedFieldOption {
+	return func(ccf *CustomCollectedField) {
+		ccf.SkipThroughEdge = skip
+	}
+}
+
+// NewCustomManualCollectedField returns a CustomCollectedField
+// to use with the entgql.CustomCollectedFields annotation.
+func NewCustomManualCollectedField(name string) CustomCollectedField {
+	return CustomCollectedField{
+		Name: name,
 	}
 }
 
