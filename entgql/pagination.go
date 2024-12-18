@@ -126,7 +126,11 @@ func (c *Cursor[T]) UnmarshalGQL(v interface{}) error {
 }
 
 // CursorsPredicate converts the given cursors to predicates.
-func CursorsPredicate[T any](after, before *Cursor[T], idField, field string, direction OrderDirection) []func(s *sql.Selector) {
+func CursorsPredicate[T any](
+	after, before *Cursor[T],
+	idField, field string,
+	direction OrderDirection,
+) []func(s *sql.Selector) {
 	var predicates []func(s *sql.Selector)
 	for _, cursor := range []*Cursor[T]{after, before} {
 		if cursor == nil {
@@ -174,7 +178,10 @@ type MultiCursorsOptions struct {
 }
 
 // MultiCursorsPredicate returns a predicate that filters records by the given cursors.
-func MultiCursorsPredicate[T any](after, before *Cursor[T], opts *MultiCursorsOptions) ([]func(s *sql.Selector), error) {
+func MultiCursorsPredicate[T any](
+	after, before *Cursor[T],
+	opts *MultiCursorsOptions,
+) ([]func(s *sql.Selector), error) {
 	var predicates []func(s *sql.Selector)
 	for _, cursor := range []*Cursor[T]{after, before} {
 		if cursor == nil {
@@ -197,16 +204,27 @@ func MultiCursorsPredicate[T any](after, before *Cursor[T], opts *MultiCursorsOp
 	return predicates, nil
 }
 
-func multiPredicate[T any](cursor *Cursor[T], opts *MultiCursorsOptions) (func(*sql.Selector), error) {
+func multiPredicate[T any](
+	cursor *Cursor[T],
+	opts *MultiCursorsOptions,
+) (func(*sql.Selector), error) {
 	values, ok := cursor.Value.([]any)
 	if !ok {
 		return nil, fmt.Errorf("cursor %T is not a slice", cursor.Value)
 	}
 	if len(values) != len(opts.Fields) {
-		return nil, fmt.Errorf("cursor values length %d do not match orderBy fields length %d", len(values), len(opts.Fields))
+		return nil, fmt.Errorf(
+			"cursor values length %d do not match orderBy fields length %d",
+			len(values),
+			len(opts.Fields),
+		)
 	}
 	if len(opts.Directions) != len(opts.Fields) {
-		return nil, fmt.Errorf("orderBy directions length %d do not match orderBy fields length %d", len(opts.Directions), len(opts.Fields))
+		return nil, fmt.Errorf(
+			"orderBy directions length %d do not match orderBy fields length %d",
+			len(opts.Directions),
+			len(opts.Fields),
+		)
 	}
 	// Ensure the row value is unique by adding
 	// the ID field, if not already present.
