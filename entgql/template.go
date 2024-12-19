@@ -470,12 +470,12 @@ func orderFields(n *gen.Type) ([]*OrderTerm, error) {
 				Edge:  e,
 				Count: true,
 			})
-		case strings.HasPrefix(ant.OrderField, name+"_"):
+		case strings.HasPrefix(ant.OrderField, "EDGEFIELD_"+name+"_"):
 			// Validate that the edge has a edge field ordering.
 			if _, err := e.OrderFieldName(); err != nil {
 				return nil, fmt.Errorf("entgql: invalid order field %s defined on edge %s.%s: %w", ant.OrderField, n.Name, e.Name, err)
 			}
-			ef := strings.TrimPrefix(ant.OrderField, name+"_")
+			ef := strings.TrimPrefix(ant.OrderField, "EDGEFIELD_"+name+"_")
 			idx := slices.IndexFunc(e.Type.Fields, func(f *gen.Field) bool {
 				ant, err := annotation(f.Annotations)
 				return err == nil && ant.OrderField == ef

@@ -240,12 +240,20 @@ func multiPredicate[T any](
 		for i := range opts.Fields {
 			var ands []*sql.Predicate
 			for j := 0; j < i; j++ {
-				ands = append(ands, sql.EQ(s.C(opts.Fields[j]), values[j]))
+				field := s.C(opts.Fields[j])
+				if strings.HasPrefix(opts.Fields[j], "edgefield_") {
+					field = opts.Fields[j]
+				}
+				ands = append(ands, sql.EQ(field, values[j]))
+			}
+			field := s.C(opts.Fields[i])
+			if strings.HasPrefix(opts.Fields[i], "edgefield_") {
+				field = opts.Fields[i]
 			}
 			if opts.Directions[i] == OrderDirectionAsc {
-				ands = append(ands, sql.GT(s.C(opts.Fields[i]), values[i]))
+				ands = append(ands, sql.GT(field, values[i]))
 			} else {
-				ands = append(ands, sql.LT(s.C(opts.Fields[i]), values[i]))
+				ands = append(ands, sql.LT(field, values[i]))
 			}
 			or = append(or, sql.And(ands...))
 		}
