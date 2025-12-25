@@ -261,7 +261,7 @@ func ({{ $receiver }} *{{ $query }}) collectField(ctx context.Context, oneNode b
 							{{- if $e.Unique }}
 								{{ $receiver }}.{{ $e.EagerLoadField }} = query
 							{{- else }}
-								{{ $receiver }}.With{{ pascal $fieldname }}(ctx, {{if or (eq $a.FieldType "Singular") (eq $a.FieldType "Existence")}}oneNode, {{end}}func (wq *{{ $e.Type.QueryName }}) {
+								{{ $receiver }}.With{{ pascal $fieldname }}({{if or (eq $a.FieldType "Singular") (eq $a.FieldType "Existence")}}oneNode, {{end}}func (wq *{{ $e.Type.QueryName }}) {
 									*wq = *query
 								})
 							{{- end }}
