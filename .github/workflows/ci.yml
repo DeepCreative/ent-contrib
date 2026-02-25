@@ -80,3 +80,15 @@ jobs:
             git --no-pager diff
             exit 1
           fi
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs: [lint, test, generate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify CI passed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "::error::One or more CI jobs failed or were cancelled"
+          exit 1
