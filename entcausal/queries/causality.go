@@ -8,8 +8,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"entgo.io/ent/dialect/sql"
 )
 
 // CausalPath represents a path through the causal graph.
