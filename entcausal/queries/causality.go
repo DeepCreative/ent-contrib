@@ -12,12 +12,12 @@ import (
 
 // CausalPath represents a path through the causal graph.
 type CausalPath struct {
-	OutputID       string           `json:"output_id"`
-	Nodes          []CausalNode     `json:"nodes"`
-	Edges          []CausalEdge     `json:"edges"`
-	Depth          int              `json:"depth"`
-	TotalLatencyMs float64          `json:"total_latency_ms"`
-	TracedAt       time.Time        `json:"traced_at"`
+	OutputID       string       `json:"output_id"`
+	Nodes          []CausalNode `json:"nodes"`
+	Edges          []CausalEdge `json:"edges"`
+	Depth          int          `json:"depth"`
+	TotalLatencyMs float64      `json:"total_latency_ms"`
+	TracedAt       time.Time    `json:"traced_at"`
 }
 
 // CausalNode represents a node in the causal path.
@@ -52,13 +52,13 @@ type EmergentPatternResult struct {
 
 // AgentDecisionPath represents the full path of an agent's decision.
 type AgentDecisionPath struct {
-	AgentID      string       `json:"agent_id"`
-	ActionID     string       `json:"action_id"`
-	SpikeEvents  []CausalNode `json:"spike_events"`
-	Decisions    []CausalNode `json:"decisions"`
-	Workflows    []CausalNode `json:"workflows"`
-	Outputs      []CausalNode `json:"outputs"`
-	TotalDepth   int          `json:"total_depth"`
+	AgentID     string       `json:"agent_id"`
+	ActionID    string       `json:"action_id"`
+	SpikeEvents []CausalNode `json:"spike_events"`
+	Decisions   []CausalNode `json:"decisions"`
+	Workflows   []CausalNode `json:"workflows"`
+	Outputs     []CausalNode `json:"outputs"`
+	TotalDepth  int          `json:"total_depth"`
 }
 
 // CausalQueryService provides causal graph query operations.
@@ -193,7 +193,7 @@ func (s *CausalQueryService) FindEmergentPatterns(
 	// 4. Calculate significance scores
 	//
 	// Example query:
-	// SELECT pattern_hash, COUNT(*) as count, 
+	// SELECT pattern_hash, COUNT(*) as count,
 	//        MIN(timestamp) as first_seen, MAX(timestamp) as last_seen,
 	//        population_id, neuron_indices
 	// FROM spike_events
